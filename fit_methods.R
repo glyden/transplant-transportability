@@ -107,8 +107,8 @@ mydat.long = mutate(mydat.long,
 ## artificially censor when they deviate from the regime AND
 ## weight by inverse probability of compliance AND
 ## adjust distribution of transplant rate to match target population AND
-## adjust distribution of KDRI to match target population AND
-## adjust distribution of dialysis duration at baseline to match target population
+## adjust distribution of organ quality to match target population AND
+## adjust distribution of age and proportion on dialysis at baseline to match target population
 
 ## make covariate wts; condition on age and on_dial
 

@@ -1,0 +1,15 @@
+Components of kp-mods.Rdata:
+
+Observed distributions from SRTR data:
+age_dist_better: Baseline age in years (younger distribution)
+age_dist_worse: Baseline age in years (older distribution)
+dial_time: Time in days since starting dialysis, for those on dialysis at baseline
+time_to_dial_start: Time in days to starting dialysis, for those not on dialysis at baseline (including NAs for those with no record of starting dialysis)
+
+Models:
+pop_mod.coef: Coefficients for logistic regression model of listing for transplant at center p (population 1), as opposed to center m (population 0) (predictors: baseline age, patient on dialysis at baseline)
+ld_mod.coef: Coefficients for logistic regression model of discrete-time living-donor transplant hazard (predictors: natural cubic spline for time in months, time-varying number of months on dialysis, population, dialysis time * population)
+spk_mod.coef: Coefficients for logistic regression model of discrete-time deceased-donor transplant hazard, conditional on no living-donor transplant (predictors: natural cubic spline for time in months, time-varying number of months on dialysis, population, dialysis time * population)
+wl_surv_mod.coef: Coefficients for logistic regression model of discrete-time waitlist failure hazard (predictors: natural cubic spline for time in months, baseline age, time-varying number of months on dialysis)
+posttx.bh: Baseline hazard of failure after deceased-donor transplant, from basehaz(.,centered=F) with time in months
+posttx.coef: Coefficients for Cox regression model of post- deceased-donor transplant survival (predictors: age at deceased-donor transplant, time-varying number of months on dialysis, deceased-donor organ quality)

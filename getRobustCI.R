@@ -44,7 +44,7 @@ getVar = function(fit,dat,wt) {
   return(var.logsurv)
 }
 
-## get CIs based on the log transform
+## get 95% CIs based on the log transform
 getCI = function(fit,dat,wt,max.time=60) {
   # get variance of log survival
   var.logsurv = getVar(fit,dat,wt)

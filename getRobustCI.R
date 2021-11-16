@@ -1,4 +1,7 @@
 ## compute a robust variance for the log of time-varying weighted Kaplan-Meier survival
+# fit is a survfit object for a weighted Kaplan-Meier curve, e.g., survfit(Surv(start,stop,death.timedep) ~ 1,data=dat,type='kaplan-meier', weights=wt)
+# dat is the start-stop dataset used in the survfit call
+# wt is the name of the time-varying weights variable in dat
 # note: dat must have an id variable called "PERS_ID" and an outcome variable called "death.timedep," which cannot have NAs
 getVar = function(fit,dat,wt) {
   # compute hazards

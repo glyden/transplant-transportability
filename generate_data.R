@@ -31,7 +31,7 @@ generate_data = function(seed) {
   num0 = unname(table(mydat$pop)["0"])
   
   ## generate months on dialysis
-  
+
   # among those on dialysis, assign how long they've been on (in days)
   mydat$dial_duration = 0
   mydat$dial_duration[mydat$on_dial==1] = sample(dial_time,sum(mydat$on_dial==1),replace=T)
@@ -60,7 +60,7 @@ generate_data = function(seed) {
                                          mydat.long[,c("ns.time1","ns.time2","ns.time3","age",
                                                        "dial_duration.timedep")]))
   mydat.long$prob.wl.dth = expit(wl_surv.x %*% wl_surv_mod.coef)
-  
+
   # assign waitlist failure
   mydat.long$wl.dth.assign = rbinom(nrow(mydat.long),size=1,prob=mydat.long$prob.wl.dth)
   mydat.long = mydat.long %>% group_by(id) %>% mutate(wl.dth = pmin(1,cumsum(wl.dth.assign)))
@@ -76,7 +76,7 @@ generate_data = function(seed) {
   mydat.long$prob.ld = expit(ld.x %*% ld_mod.coef)
   mydat.long$prob.ld = pmin(.25,4*mydat.long$prob.ld)
   mydat.long$ld.assign = rbinom(nrow(mydat.long),size=1,prob=mydat.long$prob.ld)
-  mydat.long = mydat.long %>%
+  mydat.long = mydat.long %>% #group_by(id) %>%
     mutate(ld = pmin(1,cumsum(ld.assign)))
   
   # assign dd transplant
@@ -86,7 +86,7 @@ generate_data = function(seed) {
                                      int=mydat.long$dial_duration.timedep*mydat.long$pop))
   mydat.long$prob.spk = expit(spk.x %*% spk_mod.coef)
   mydat.long$spk.assign = rbinom(nrow(mydat.long),size=1,prob=mydat.long$prob.spk)
-  mydat.long = mydat.long %>% 
+  mydat.long = mydat.long %>% #group_by(id) %>% 
     mutate(spk = pmin(1,cumsum(spk.assign)))
   
   # remove rows after ld transplant, if not previously transplanted with dd (don't use these)
@@ -95,7 +95,7 @@ generate_data = function(seed) {
     filter(ld.lag==0) %>%
     mutate(spk = ifelse(ld==1,0,spk)) # assume ld is assigned first, then spk
   
-  # assign organ quality to dd transplants
+  ## assign organ quality to dd transplants
   mydat.long$log.kdri = NA
   mydat.long = mutate(mydat.long,spk.lag = ifelse(row_number()==1,0,lag(spk)))
   mydat.long$log.kdri[mydat.long$spk==1 & mydat.long$spk.lag==0 & mydat.long$pop==1] = 
@@ -109,9 +109,10 @@ generate_data = function(seed) {
   # exponentiate log KDRI
   mydat.long = mutate(mydat.long,kdri = exp(log.kdri))
 
-  ## assign post-dd-transplant survival by drawing from covariate-specific survival curves
+  ## assign post-dd-transplant survival by randomly drawing from covariate-specific survival curves
   # (inverse transform sampling)
   mydat.long.spk = mydat.long %>% filter(spk==1,spk.lag==0,wl.dth.lag==0) %>% rename(spk_KDRI=kdri)
+  tapply(mydat.long.spk$time,mydat.long.spk$pop,summary) # wait times
   mydat.long.spk$posttx_unif = runif(nrow(mydat.long.spk))
   mydat.long.spk$age = mydat.long.spk$age + (mydat.long.spk$start/12)
   posttx.survs = lapply(1:nrow(mydat.long.spk),function(i) {
@@ -136,7 +137,7 @@ generate_data = function(seed) {
   mydat.long = mydat.long %>% group_by(id) %>%
     mutate(posttx_dth = ifelse(spk==1 & cumsum(spk.lag)>=posttx_surv & posttx_cens==0,1,0))
   mydat.long = mutate(mydat.long,
-                      death.timedep = ifelse(ld==1,NA,
+                      death.timedep = ifelse(ld==1,0, # code as alive after ld transplant to ensure no NAs for variance calculation, but we don't actually use any data after ld transplant bc weights = 0
                                              ifelse(cumsum(wl.dth) > cumsum(spk),1,
                                                     ifelse(posttx_dth==1,1,0))))
   
@@ -144,9 +145,10 @@ generate_data = function(seed) {
   mydat.long = mutate(mydat.long,death.timedep.lag = ifelse(row_number()==1,0,lag(death.timedep))) %>%
     filter(death.timedep.lag==0)
   
-  # remove variables
+  ## remove variables; rename id as PERS_ID for variance calculation
   mydat.long = mydat.long %>% select(-dial_start,-contains("ns"),-dial_duration.mths,
                                      -prob.wl.dth,-wl.dth.assign,-prob.ld,-ld.assign,-prob.spk,-spk.assign,
-                                     -posttx_surv,-posttx_cens)
+                                     -posttx_surv,-posttx_cens) %>%
+    rename(PERS_ID=id)
   return(mydat.long)
 }

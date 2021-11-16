@@ -4,11 +4,13 @@ job=as.numeric(Sys.getenv('SLURM_ARRAY_TASK_ID'))
 a=(25*(job-1))+1
 b=a+24
 
-library(dplyr);library(survival);library(splitstackshape);library(splines);library(zoo)
+library(dplyr,lib.loc="~/RPackages");library(survival,lib.loc="~/RPackages");#library(lubridate);
+library(splitstackshape,lib.loc="~/RPackages");library(splines);library(zoo,lib.loc="~/RPackages")
 
-load("~/Desktop/SRTR/Simulation/Github/kp-mods.Rdata")
-source("~/Desktop/SRTR/Simulation/Github/generate_data.R") # generate_data function
-source("~/Desktop/SRTR/getCI.R") # getCI function
+# load models for simulation and functions
+load("kp-mods.Rdata")
+source("generate_data.R")
+source("getRobustCI.R")
 
 sapply(a:b,function(i) {
 
@@ -20,6 +22,7 @@ mydat.long = generate_data(i)
 mydat.long = mydat.long %>% mutate(ACwt = ifelse(ld==1,0,1))
 ACsurv = survfit(Surv(start,stop,death.timedep) ~ 1,data=mydat.long,
         type='kaplan-meier', weights=ACwt)
+# plot(ACsurv)
 ACsum = summary(ACsurv,times=c(12,36,60)) # get estimated survival at the three time points
 ACres = data.frame(time=c(12,36,60),
                    surv=ACsum[["surv"]],
@@ -50,7 +53,7 @@ mydat.long = mutate(mydat.long,
 # third method:
 ## artificially censor when they deviate from the regime AND
 ## weight by inverse probability of compliance AND
-## adjust distribution of transplant rate to match target population
+## adjust distribution of transplant rate to match target population (center 1)
 
 # assume ld is assigned first
 # given that ld was not assigned, model prob of spk
@@ -76,8 +79,8 @@ mydat.long = mutate(mydat.long,
 # fourth method:
 ## artificially censor when they deviate from the regime AND
 ## weight by inverse probability of compliance AND
-## adjust distribution of transplant rate to match target population AND
-## adjust distribution of organ quality to match target population
+## adjust distribution of transplant rate to match target population (center 1) AND
+## adjust distribution of KDRI to match target population (center 1)
 
 # subset to spk transplant times
 mydat.long.spk = mydat.long %>%
@@ -106,9 +109,9 @@ mydat.long = mutate(mydat.long,
 # fifth method:
 ## artificially censor when they deviate from the regime AND
 ## weight by inverse probability of compliance AND
-## adjust distribution of transplant rate to match target population AND
-## adjust distribution of organ quality to match target population AND
-## adjust distribution of age and proportion on dialysis at baseline to match target population
+## adjust distribution of transplant rate to match target population (center 1) AND
+## adjust distribution of KDRI to match target population (center 1) AND
+## adjust distribution of dialysis duration at baseline to match target population (center 1)
 
 ## make covariate wts; condition on age and on_dial
 
@@ -149,13 +152,13 @@ ip.rate.CI = getCI(ip.rate.surv,mydat.long,"ip.rate.wt")
 ip.rate.CI.sm = ip.rate.CI[ip.rate.CI$time%in%c(12,ip.rate.CI$time[max(which(ip.rate.CI$time <= 36))],max(ip.rate.CI$time)),]
 ip.rate.CI.sm$method = "ipw-rate"
 
-# estimate weighted survival w/ rate and quality weights (should be consistent for study estimand)
+# estimate weighted survival w/ rate and quality weights (consistent for study estimand)
 ip.qual.surv = survfit(Surv(start,stop,death.timedep) ~ 1,data=mydat.long,type='kaplan-meier', weights=ip.qual.wt)
 ip.qual.CI = getCI(ip.qual.surv,mydat.long,"ip.qual.wt")
 ip.qual.CI.sm = ip.qual.CI[ip.qual.CI$time%in%c(12,ip.qual.CI$time[max(which(ip.qual.CI$time <= 36))],max(ip.qual.CI$time)),]
 ip.qual.CI.sm$method = "ipw-qual"
 
-# estimate weighted survival w/ all weights (should be consistent for target estimand)
+# estimate weighted survival w/ all weights (consistent for target estimand)
 ip.all.surv = survfit(Surv(start,stop,death.timedep) ~ 1,data=mydat.long,type='kaplan-meier', weights=ip.all.wt)
 ip.all.CI = getCI(ip.all.surv,mydat.long,"ip.all.wt")
 ip.all.CI.sm = ip.all.CI[ip.all.CI$time%in%c(12,ip.all.CI$time[max(which(ip.all.CI$time <= 36))],max(ip.all.CI$time)),]
@@ -166,6 +169,6 @@ res = rbind.data.frame(ACres,ipACsurv.CI.sm,ip.rate.CI.sm,ip.qual.CI.sm,ip.all.C
 res$iter = i
 
 # write res to a text file
-path = "~/Desktop/SRTR/Simulation/Github/"
+path = "~/Results/"
 write.table(res,file=paste0(path,"results.",i,".txt"),append=F,row.names=FALSE,col.names=T)
 })
